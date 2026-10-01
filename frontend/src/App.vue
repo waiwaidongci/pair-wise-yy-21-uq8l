@@ -1,26 +1,97 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
-import { routes } from "./router/routes";
-import { mockData } from "./mocks/seedData";
-import StatusBadge from "./components/common/StatusBadge.vue";
-import StatCard from "./components/common/StatCard.vue";
-const active = ref<string>(routes[0]?.route ?? "/dashboard");
-const current = computed(() => routes.find((route) => route.route === active.value) ?? routes[0]);
-const entries = Object.entries(mockData);
+import { computed } from "vue";
+import { useRoute, useRouter, type RouteRecordNormalized } from "vue-router";
+import { useAuthStore } from "./stores/AuthStore";
+import { RoleText, type Role } from "./types/Role";
+
+const route = useRoute();
+const router = useRouter();
+const auth = useAuthStore();
+
+const routes = computed<RouteRecordNormalized[]>(() => router.getRoutes().filter((r) => r.name && r.path !== "/"));
+const current = computed(() => route.name);
+
+function go(path: string) {
+  router.push(path);
+}
+
+async function switchRole(role: Role) {
+  await auth.switchRole(role);
+  // 切换角色后重新校验当前路由权限
+  const roles = route.meta.roles as string[] | undefined;
+  if (roles && !roles.includes(auth.role)) {
+    router.push("/dashboard");
+  }
+}
+
+function onRoleChange(e: Event) {
+  switchRole((e.target as HTMLSelectElement).value as Role);
+}
 </script>
 
 <template>
   <div class="shell">
-    <aside>
-      <div class="brand">电力配网抢修工单系统</div>
-      <nav>
-        <button v-for="route in routes" :key="route.route" :class="{ active: active === route.route }" @click="active = route.route">{{ route.name }}</button>
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo">⚡</div>
+        <div class="title">
+          <strong>配网抢修</strong>
+          <span>grid-repair</span>
+        </div>
+      </div>
+      <nav class="nav">
+        <button
+          v-for="r in routes"
+          :key="r.path"
+          class="nav-item"
+          :class="{ active: current === r.name }"
+          @click="go(r.path)"
+        >
+          {{ r.name }}
+        </button>
       </nav>
+      <div class="role-switcher">
+        <div class="label">当前角色</div>
+        <select :value="auth.role" @change="onRoleChange">
+          <option v-for="opt in auth.roleOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+        </select>
+      </div>
     </aside>
-    <main class="page">
-      <section class="page-head"><div><p class="eyebrow">grid-repair</p><h1>{{ current?.name }}</h1></div><StatusBadge value="LOCAL_DATA" /></section>
-      <section class="metrics"><StatCard label="核心模型" :value="entries.length" /><StatCard label="共享枚举" :value="3" /><StatCard label="本地记录" :value="entries.reduce((s, [, rows]) => s + rows.length, 0)" /></section>
-      <section class="workbench"><div class="panel wide"><h2>业务数据</h2><article class="row" v-for="[key, rows] in entries" :key="key"><strong>{{ key }}</strong><span>{{ rows.length }} 条</span><StatusBadge value="READY" /></article></div><div class="panel"><h2>联动检查</h2><p>页面、store、API、构造器、日志模板和枚举常量均按提示词拆分。</p></div></section>
+    <main class="main">
+      <header class="topbar">
+        <h1>{{ current }}</h1>
+        <div class="user">
+          <span class="role-badge">{{ RoleText[auth.role] }}</span>
+          <span class="name">{{ auth.operatorName }}</span>
+        </div>
+      </header>
+      <div class="content">
+        <router-view />
+      </div>
     </main>
   </div>
 </template>
+
+<style scoped>
+.shell { display: flex; min-height: 100vh; }
+.sidebar { width: 220px; background: #001529; color: #fff; display: flex; flex-direction: column; padding: 16px 0; }
+.brand { display: flex; align-items: center; gap: 10px; padding: 0 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+.logo { font-size: 28px; }
+.title { display: flex; flex-direction: column; }
+.title strong { font-size: 16px; }
+.title span { font-size: 11px; color: #8c8c8c; }
+.nav { flex: 1; padding: 12px 8px; }
+.nav-item { display: block; width: 100%; text-align: left; padding: 10px 16px; background: none; border: none; color: #d9d9d9; font-size: 14px; border-radius: 6px; cursor: pointer; margin-bottom: 4px; }
+.nav-item:hover { background: rgba(255,255,255,0.08); }
+.nav-item.active { background: #409eff; color: #fff; }
+.role-switcher { padding: 12px 16px; border-top: 1px solid rgba(255,255,255,0.1); }
+.role-switcher .label { font-size: 11px; color: #8c8c8c; margin-bottom: 6px; }
+.role-switcher select { width: 100%; padding: 6px; border-radius: 4px; border: none; background: rgba(255,255,255,0.1); color: #fff; }
+.main { flex: 1; background: #f0f2f5; display: flex; flex-direction: column; }
+.topbar { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; background: #fff; border-bottom: 1px solid #e8e8e8; }
+.topbar h1 { font-size: 20px; margin: 0; }
+.user { display: flex; align-items: center; gap: 10px; }
+.role-badge { background: #ecf5ff; color: #409eff; padding: 4px 10px; border-radius: 10px; font-size: 12px; }
+.name { font-size: 14px; color: #606266; }
+.content { flex: 1; overflow-y: auto; }
+</style>

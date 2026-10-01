@@ -8,4 +8,5 @@ export interface FaultReport {
   severity: string;
   report_channel: string;
   status: string;
+  reported_at?: string;
 }

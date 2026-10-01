@@ -1,14 +1,14 @@
 import type { GridAsset } from "../types/GridAsset";
 
 export const createDefaultGridAsset = (overrides: Partial<GridAsset> = {}): GridAsset => ({
-  id: 1 as never,
-  asset_code: "asset code 1" as never,
-  asset_type: "VOLTAGE_LOW" as never,
-  feeder_line: "feeder line 1" as never,
-  voltage_level: "LOW" as never,
-  location_desc: "location desc 1" as never,
-  health_status: "ASSIGNED" as never,
-  owner_team_id: 1 as never,
+  id: 0,
+  asset_code: "",
+  asset_type: "VOLTAGE_LOW",
+  feeder_line: "",
+  voltage_level: "LOW",
+  location_desc: "",
+  health_status: "NORMAL",
+  owner_team_id: 0,
   ...overrides
 });
 
