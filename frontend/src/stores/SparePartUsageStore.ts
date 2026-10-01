@@ -1,6 +1,24 @@
 import { defineStore } from "pinia";
-import { listSparePartUsage } from "../api/SparePartUsage";
+import { listSparePartUsage, reconcileSpareParts } from "../api/SparePartUsage";
+import type { ReconcileReport, SparePartUsage } from "../types/SparePartUsage";
+
 export const useSparePartUsageStore = defineStore("sparePartUsage", {
-  state: () => ({ rows: [] as Awaited<ReturnType<typeof listSparePartUsage>>, loading: false }),
-  actions: { async load() { this.loading = true; this.rows = await listSparePartUsage(); this.loading = false; } }
+  state: () => ({
+    rows: [] as SparePartUsage[],
+    reconcile: {} as Record<number, ReconcileReport>,
+    loading: false
+  }),
+  actions: {
+    async load(ticketId?: number) {
+      this.loading = true;
+      try {
+        this.rows = await listSparePartUsage(ticketId);
+      } finally {
+        this.loading = false;
+      }
+    },
+    async loadReconcile(ticketId: number) {
+      this.reconcile[ticketId] = await reconcileSpareParts(ticketId);
+    }
+  }
 });

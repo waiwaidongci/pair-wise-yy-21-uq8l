@@ -1,12 +1,26 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { routes } from "./router/routes";
-import { mockData } from "./mocks/seedData";
-import StatusBadge from "./components/common/StatusBadge.vue";
-import StatCard from "./components/common/StatCard.vue";
+import { useSessionStore } from "./stores/SessionStore";
+import { Role, RoleText } from "./constants/Role";
+import DashboardPage from "./pages/DashboardPage.vue";
+import AssetsPage from "./pages/AssetsPage.vue";
+import FaultsPage from "./pages/FaultsPage.vue";
+import TicketsPage from "./pages/TicketsPage.vue";
+import PartsPage from "./pages/PartsPage.vue";
+
+const session = useSessionStore();
 const active = ref<string>(routes[0]?.route ?? "/dashboard");
 const current = computed(() => routes.find((route) => route.route === active.value) ?? routes[0]);
-const entries = Object.entries(mockData);
+
+const pages: Record<string, unknown> = {
+  "/dashboard": DashboardPage,
+  "/assets": AssetsPage,
+  "/faults": FaultsPage,
+  "/tickets": TicketsPage,
+  "/parts": PartsPage
+};
+const currentPage = computed(() => pages[active.value] ?? DashboardPage);
 </script>
 
 <template>
@@ -16,11 +30,20 @@ const entries = Object.entries(mockData);
       <nav>
         <button v-for="route in routes" :key="route.route" :class="{ active: active === route.route }" @click="active = route.route">{{ route.name }}</button>
       </nav>
+      <div class="role-box">
+        <p class="eyebrow">当前角色</p>
+        <select :value="session.role" @change="session.setRole(($event.target as HTMLSelectElement).value as typeof session.role)">
+          <option v-for="role in Role" :key="role" :value="role">{{ RoleText[role] }}</option>
+        </select>
+        <p class="muted">按钮显隐与后端 RBAC 裁决使用同一角色</p>
+      </div>
     </aside>
     <main class="page">
-      <section class="page-head"><div><p class="eyebrow">grid-repair</p><h1>{{ current?.name }}</h1></div><StatusBadge value="LOCAL_DATA" /></section>
-      <section class="metrics"><StatCard label="核心模型" :value="entries.length" /><StatCard label="共享枚举" :value="3" /><StatCard label="本地记录" :value="entries.reduce((s, [, rows]) => s + rows.length, 0)" /></section>
-      <section class="workbench"><div class="panel wide"><h2>业务数据</h2><article class="row" v-for="[key, rows] in entries" :key="key"><strong>{{ key }}</strong><span>{{ rows.length }} 条</span><StatusBadge value="READY" /></article></div><div class="panel"><h2>联动检查</h2><p>页面、store、API、构造器、日志模板和枚举常量均按提示词拆分。</p></div></section>
+      <section class="page-head">
+        <div><p class="eyebrow">grid-repair</p><h1>{{ current?.name }}</h1></div>
+        <span class="badge" data-tone="info">{{ session.roleText }}</span>
+      </section>
+      <component :is="currentPage" :key="active" />
     </main>
   </div>
 </template>
